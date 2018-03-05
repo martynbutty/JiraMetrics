@@ -1,5 +1,5 @@
 # JiraMetrics
-A Python script to get metrics like throughput and cycletime from Jira, into a spreadsheet without using the control report.
+A Python script to get metrics like throughput and cycletime from Jira. Output data is written to a spreadsheet in CSV format.
 
 If you've every validated the output from Jira's control report, you may have noticed the cycle time isn't quite as you expect, especially if you've every changed your projects workflw to add/remove or rename states. 
 This seems to be because behind the screnes, Jira creates new states even for a simple case change of an existing state, which can then lead to the old states not being included in the cycle time.
