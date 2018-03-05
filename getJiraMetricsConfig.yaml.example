@@ -1,0 +1,56 @@
+Connection:
+    Domain: https://jira.example.com # URL to your Jira server
+    # Username to access the above Jira instance. If you do not one, you will be prompted for it
+    Username:
+    # Password for the above username. If you do not set one, you will be prompted for it
+    Password:
+
+# All statues that you count an issue as being actively worked on
+InProcessStates:
+    - In Progress
+    - Ready for Code Review
+    - In code review
+    - Ready for Test
+    - In Test
+
+# All status of an issue where you have agreed to start work on it, including states where it may not be in active work
+InProgressStates:
+    - Ready
+    - On Hold
+    - In Progress
+    - Ready for Code Review
+    - In code review
+    - Ready for Test
+    - In Test
+    - Ready for release
+
+# States for an issue that has been started but is current not actively being worked on
+InactiveStates:
+    - On Hold
+    - Ready for Code Review
+    - Ready for Test
+    - Ready for release
+
+# If you change your workflow in Jira, even just the case of the names, a new state is created. If you have issues
+# that can be in old states, you can map those to a new state by adding entries below. For example if an issue that
+# spent time in "ON HOLD", but your current workflow uses "On Hold", add the first entry below
+StatusMap:
+    ON HOLD: On Hold
+    Testing: In Test
+    TODO: Todo
+    Code Review: In code review
+    Doing/Active: In Progress
+    Ready to release: Ready for release
+    Ready to Release: Ready for release
+
+# A JQL query that will return the issues you want to consider for the metrics. {{from}} and {{to}} will be substituted
+# for actual from and to dates
+IssueJQL: >
+  project IN ("CX", "SBS") AND
+  status = "DONE" AND
+  status changed to ("Done")
+  during ({{from}}, {{to}})
+  ORDER BY priority DESC, updated DESC
+
+# A JQL query which will return open defects
+OpenDefectJQL: project IN ("CX", "SBS") AND status not in ("Done", "CLOSED", "BINNED") AND issuetype = Bug
