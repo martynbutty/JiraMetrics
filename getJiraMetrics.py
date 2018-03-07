@@ -52,9 +52,9 @@ except TypeError as e:
     sys.exit(2)
 
 status_map = read_config_key('StatusMap', {})
-in_process_states = read_config_key('InProcessStates', [])
-in_progress_states = read_config_key('InProgressStates', [])
-inactive_states = read_config_key('InactiveStates', [])
+in_process_states = read_config_key(('StatusTypes', 'InProcess'), [])
+in_progress_states = read_config_key(('StatusTypes', 'InProgress'), [])
+inactive_states = read_config_key(('StatusTypes', 'Inactive'), [])
 
 try:
     jira = JIRA(options, basic_auth=auth, max_retries=0, validate=True)
@@ -73,7 +73,13 @@ def get_open_defects():
     if defect_jql is None:
         return None
 
+    defect_types = ','.join(map(str, read_config_key(('IssueTypes', 'Defects'), ())))
+    complete_states = ','.join(map(str, read_config_key(('StatusTypes', 'Closed'), ())))
+
     defect_jql = defect_jql.replace('{{projects}}', project_codes)
+    defect_jql = defect_jql.replace('{{defects}}', defect_types)
+    defect_jql = defect_jql.replace('{{complete}}', complete_states)
+
     all_defects = jira.search_issues(defect_jql)
     if all_defects.total <= 0:
         return None
@@ -243,8 +249,11 @@ if from_date is None:
 if to_date is None:
     to_date = datetime.date.today().strftime("%Y-%m-%d")
 
+resolved_states = ','.join(map(str, read_config_key(('StatusTypes', 'Resolved'), ())))
+
 jql = read_config_key('IssueJQL')
 jql = jql.replace('{{projects}}', project_codes)
+jql = jql.replace('{{resolved}}', resolved_states)
 jql = jql.replace('{{from}}', "'" + from_date + "'")
 jql = jql.replace('{{to}}', "'" + to_date + "'")
 

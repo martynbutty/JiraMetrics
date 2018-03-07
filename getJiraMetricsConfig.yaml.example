@@ -11,52 +11,73 @@ Projects:
     - CX
     - SBS
 
-# All statues that you count an issue as being actively worked on
-InProcessStates:
-    - In Progress
-    - Ready for Code Review
-    - In code review
-    - Ready for Test
-    - In Test
+# Issue type definitions for use in JQL queries
+IssueTypes:
+    # List of all types that a defect or bug issue type can be in
+    Defects:
+        - Bug
 
-# All status of an issue where you have agreed to start work on it, including states where it may not be in active work
-InProgressStates:
-    - Ready
-    - On Hold
-    - In Progress
-    - Ready for Code Review
-    - In code review
-    - Ready for Test
-    - In Test
-    - Ready for release
+StatusTypes:
+    # List of all statuses that identify an issue as done/resolved/complete etc. This includes issues you rejected
+    # without working on, ie, invalid issues that you may mark as binned or similar
+    Closed:
+        - Done
+        - CLOSED
+        - BINNED
 
-# States for an issue that has been started but is current not actively being worked on
-InactiveStates:
-    - On Hold
-    - Ready for Code Review
-    - Ready for Test
-    - Ready for release
+    # List of all statuses that identify an issue as done. This list should EXCLUDE rejected issues (see above),
+    # i.e. an issue should only fall into one of the below states when worked on and completed
+    Resolved:
+        - Done
+        - DONE
+        - Closed
 
-# If you change your workflow in Jira, even just the case of the names, a new state is created. If you have issues
-# that can be in old states, you can map those to a new state by adding entries below. For example if an issue that
-# spent time in "ON HOLD", but your current workflow uses "On Hold", add the first entry below
-StatusMap:
-    ON HOLD: On Hold
-    Testing: In Test
-    TODO: Todo
-    Code Review: In code review
-    Doing/Active: In Progress
-    Ready to release: Ready for release
-    Ready to Release: Ready for release
+    # All statues that you count an issue as being actively worked on
+    InProcess:
+        - In Progress
+        - Ready for Code Review
+        - In code review
+        - Ready for Test
+        - In Test
+
+    # All status of an issue where you have agreed to start work on it, including states where it may not be in active work
+    InProgress:
+        - Ready
+        - On Hold
+        - In Progress
+        - Ready for Code Review
+        - In code review
+        - Ready for Test
+        - In Test
+        - Ready for release
+
+    # States for an issue that has been started but is current not actively being worked on
+    Inactive:
+        - On Hold
+        - Ready for Code Review
+        - Ready for Test
+        - Ready for release
+
+    # If you change your workflow in Jira, even just the case of the names, a new state is created. If you have issues
+    # that can be in old states, you can map those to a new state by adding entries below. For example if an issue that
+    # spent time in "ON HOLD", but your current workflow uses "On Hold", add the first entry below
+    StatusMap:
+        ON HOLD: On Hold
+        Testing: In Test
+        TODO: Todo
+        Code Review: In code review
+        Doing/Active: In Progress
+        Ready to release: Ready for release
+        Ready to Release: Ready for release
 
 # A JQL query that will return the issues you want to consider for the metrics. {{from}} and {{to}} will be substituted
 # for actual from and to dates
 IssueJQL: >
-  project IN ({{projects}}) AND
-  status = "DONE" AND
-  status changed to ("Done")
+  project in ({{projects}}) AND
+  status in ({{resolved}}) AND
+  status changed to ({{resolved}})
   during ({{from}}, {{to}})
   ORDER BY priority DESC, updated DESC
 
 # A JQL query which will return open defects
-OpenDefectJQL: project IN ({{projects}}) AND status not in ("Done", "CLOSED", "BINNED") AND issuetype = Bug
+OpenDefectJQL: project IN ({{projects}}) AND status not in ({{complete}}) AND issuetype in ({{defects}})
