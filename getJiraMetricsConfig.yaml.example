@@ -1,9 +1,15 @@
 Connection:
-    Domain: https://jira.example.com # URL to your Jira server
+    # URL to your Jira server
+    Domain: https://jira.example.com
     # Username to access the above Jira instance. If you do not one, you will be prompted for it
     Username:
     # Password for the above username. If you do not set one, you will be prompted for it
     Password:
+
+# List of Jira project keys. They will be used in the JQL queries generated to get issues
+Projects:
+    - CX
+    - SBS
 
 # All statues that you count an issue as being actively worked on
 InProcessStates:
@@ -46,11 +52,11 @@ StatusMap:
 # A JQL query that will return the issues you want to consider for the metrics. {{from}} and {{to}} will be substituted
 # for actual from and to dates
 IssueJQL: >
-  project IN ("CX", "SBS") AND
+  project IN ({{projects}}) AND
   status = "DONE" AND
   status changed to ("Done")
   during ({{from}}, {{to}})
   ORDER BY priority DESC, updated DESC
 
 # A JQL query which will return open defects
-OpenDefectJQL: project IN ("CX", "SBS") AND status not in ("Done", "CLOSED", "BINNED") AND issuetype = Bug
+OpenDefectJQL: project IN ({{projects}}) AND status not in ("Done", "CLOSED", "BINNED") AND issuetype = Bug

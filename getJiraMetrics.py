@@ -45,6 +45,12 @@ options = {
     'basic-auth': auth
 }
 
+try:
+    project_codes = ','.join(map(str, read_config_key('Projects', ())))
+except TypeError as e:
+    print("** Error, please check getJiraMetricsConfig.yaml has at least one project set in the Projects section")
+    sys.exit(2)
+
 status_map = read_config_key('StatusMap', {})
 in_process_states = read_config_key('InProcessStates', [])
 in_progress_states = read_config_key('InProgressStates', [])
@@ -66,9 +72,12 @@ def get_open_defects():
     defect_jql = read_config_key('OpenDefectJQL')
     if defect_jql is None:
         return None
+
+    defect_jql = defect_jql.replace('{{projects}}', project_codes)
     all_defects = jira.search_issues(defect_jql)
     if all_defects.total <= 0:
         return None
+
     return all_defects
 
 
@@ -235,6 +244,7 @@ if to_date is None:
     to_date = datetime.date.today().strftime("%Y-%m-%d")
 
 jql = read_config_key('IssueJQL')
+jql = jql.replace('{{projects}}', project_codes)
 jql = jql.replace('{{from}}', "'" + from_date + "'")
 jql = jql.replace('{{to}}', "'" + to_date + "'")
 
