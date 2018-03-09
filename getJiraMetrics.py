@@ -139,6 +139,11 @@ def get_cycle_time(issue_key):
                         working_mins += 720
 
                     qtr_days = divmod(working_mins, 360)[0]  # 360 mins = 1/4 of a day
+
+                    # If > 1hr but < 1/4day worked, set to 1/4 day so stats look better
+                    if qtr_days == 0 and working_mins > 59:
+                        qtr_days = 1
+
                     full_days, qtrs = divmod(qtr_days, 4)
                     days = full_days + (qtrs * 0.25)
 
