@@ -51,7 +51,7 @@ except TypeError as e:
     print("** Error, please check getJiraMetricsConfig.yaml has at least one project set in the Projects section")
     sys.exit(2)
 
-status_map = read_config_key('StatusMap', {})
+status_map = read_config_key(('StatusTypes', 'StatusMap'), {})
 in_process_states = read_config_key(('StatusTypes', 'InProcess'), [])
 in_progress_states = read_config_key(('StatusTypes', 'InProgress'), [])
 inactive_states = read_config_key(('StatusTypes', 'Inactive'), [])
@@ -131,6 +131,13 @@ def get_cycle_time(issue_key):
                     non_working_mins = weekend_days * 24 * 60
 
                     working_mins = mins_diff - non_working_mins
+
+                    # If someone works on a weekend, we can get -ve mins worked. This is an exception, and there's no
+                    # easy way to workout how much of the weekend was worked, so lets try adding back half a day at a
+                    # time until get +ve working_mins, assumption being not all weekend worked all the time (for now)
+                    while working_mins <= 0:
+                        working_mins += 720
+
                     qtr_days = divmod(working_mins, 360)[0]  # 360 mins = 1/4 of a day
                     full_days, qtrs = divmod(qtr_days, 4)
                     days = full_days + (qtrs * 0.25)
