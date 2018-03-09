@@ -204,7 +204,9 @@ def get_empty_return_dict():
 
 
 def write_issue_row(an_issue, csv_writer):
-    csv_writer.writerow((an_issue['Issue'], an_issue['type'], an_issue['priority'], an_issue['class'], an_issue['Todo'],
+    link = '=HYPERLINK("' + config['Connection']['Domain'] + "/browse/" + an_issue['Issue'] + '","' + an_issue['Issue']\
+           + '")'
+    csv_writer.writerow((link, an_issue['type'], an_issue['priority'], an_issue['class'], an_issue['Todo'],
                          an_issue['Ready'], an_issue['On Hold'], an_issue['In Progress'],
                          an_issue['Ready for Code Review'], an_issue['In code review'], an_issue['Ready for Test'],
                          an_issue['In Test'], an_issue['Ready for release'], an_issue['In Process'],
