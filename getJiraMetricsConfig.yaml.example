@@ -17,6 +17,18 @@ IssueTypes:
     Defects:
         - Bug
 
+# List of the statuses to output as columns in the metrics output
+OutputStatusCols:
+    - Backlog
+    - Ready
+    - In Dev
+    - Finished Dev
+    - In code review
+    - Finished Code Review
+    - In Test
+    - Ready for release
+    - Done
+
 StatusTypes:
     # List of all statuses that identify an issue as done/resolved/complete etc. This includes issues you rejected
     # without working on, ie, invalid issues that you may mark as binned or similar
@@ -74,7 +86,7 @@ StatusTypes:
 # for actual from and to dates
 IssueJQL: >
   project in ({{projects}}) AND
-  status in ({{resolved}}) AND
+  status in ({{complete}}) AND
   status changed to ({{resolved}})
   during ({{from}}, {{to}})
   ORDER BY priority DESC, updated DESC

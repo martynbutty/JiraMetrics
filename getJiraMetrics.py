@@ -97,7 +97,7 @@ def get_cycle_time(issue_key):
     issue_priority = jira_issue.fields.priority
 
     if jira_issue.fields.customfield_12401 is not None:
-        class_of_service = jira_issue.fields.customfield_12401
+        class_of_service = jira_issue.fields.customfield_12401.value
     else:
         class_of_service = "NOT SET"
 
@@ -152,6 +152,11 @@ def get_cycle_time(issue_key):
                     else:
                         time_in_status[status_col] = days
 
+                    if status_col not in all_statuses:
+                        all_statuses[status_col] = 1
+                    else:
+                        all_statuses[status_col] += 1
+
                     last_time = this_time
 
     total = 0
@@ -186,19 +191,15 @@ def get_cycle_time(issue_key):
 def get_empty_return_dict():
     ret = {
         'Issue': '',
-        'Todo': 0,
-        'Ready': 0,
-        'On Hold': 0,
-        'In Progress': 0,
-        'Ready for Code Review': 0,
-        'In code review': 0,
-        'Ready for Test': 0,
-        'In Test': 0,
-        'Ready for release': 0,
         'In Process': 0,
         'Inactive': 0,
-        'Total': 0
+        'Total': 0,
+        'class': 'NOT SET'
     }
+
+    output_states = read_config_key('OutputStatusCols', [])
+    for key in output_states:
+        ret[key] = 0
 
     return ret
 
@@ -206,15 +207,20 @@ def get_empty_return_dict():
 def write_issue_row(an_issue, csv_writer):
     link = '=HYPERLINK("' + config['Connection']['Domain'] + "/browse/" + an_issue['Issue'] + '","' + an_issue['Issue']\
            + '")'
-    csv_writer.writerow((link, an_issue['type'], an_issue['priority'], an_issue['class'], an_issue['Todo'],
-                         an_issue['Ready'], an_issue['On Hold'], an_issue['In Progress'],
-                         an_issue['Ready for Code Review'], an_issue['In code review'], an_issue['Ready for Test'],
-                         an_issue['In Test'], an_issue['Ready for release'], an_issue['In Process'],
-                         an_issue['Inactive'], an_issue['Total']))
+
+    keys = ['type', 'priority', 'class']
+    keys.extend(read_config_key('OutputStatusCols', []))
+    keys.extend(['In Process', 'Inactive', 'Total'])
+
+    output_row = [link]
+    output_row.extend(list(map(lambda x: an_issue[x], keys)))
+    csv_writer.writerow(tuple(output_row))
 
 
 def write_averages_row(issues, csv_writer):
     n = int(len(issues))
+    if n <= 0:
+        return
     mean_in_process = sum(an_issue['In Process'] for an_issue in issues)/n
     mean_inactive = sum(an_issue['Inactive'] for an_issue in issues)/n
     mean_total = sum(an_issue['Total'] for an_issue in issues)/n
@@ -229,9 +235,11 @@ def write_new_group_header(class_of_service=None):
     if class_of_service is not None:
         writer.writerow(['CLASS OF SERVICE', cos])
 
-    writer.writerow(('Issue', 'Type', 'Priority', 'Class of Service', 'ToDo', 'Ready', 'On Hold', 'In Progress',
-                     'Ready for Review', 'Code Review', 'Ready for test', 'Test', 'Ready to Release', 'In Process',
-                     'Inactive', 'Total'))
+    static_headers = ('Issue', 'Type', 'Priority', 'Class of Service')
+    static_headers_postfix = ('In Process', 'Inactive', 'Total')
+    status_cols = tuple(read_config_key('OutputStatusCols', []))
+    headers = static_headers + (status_cols) + static_headers_postfix
+    writer.writerow(headers)
 
 
 from_date = None
@@ -264,16 +272,20 @@ if to_date is None:
     to_date = datetime.date.today().strftime("%Y-%m-%d")
 
 resolved_states = ','.join(map(str, read_config_key(('StatusTypes', 'Resolved'), ())))
+complete_states = ','.join(map(str, read_config_key(('StatusTypes', 'Closed'), ())))
 
 jql = read_config_key('IssueJQL')
 jql = jql.replace('{{projects}}', project_codes)
 jql = jql.replace('{{resolved}}', resolved_states)
+jql = jql.replace('{{complete}}', complete_states)
 jql = jql.replace('{{from}}', "'" + from_date + "'")
 jql = jql.replace('{{to}}', "'" + to_date + "'")
 
+print("\nUsing the following JQL to get issues\n", jql)
 print("Getting Jira data and processing metrics...")
 
 issues_done = jira.search_issues(jql)
+all_statuses = {}
 
 date_string = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')
 outputFilename = 'cycleTime_' + date_string + '.csv'
@@ -294,10 +306,10 @@ with open(outputFilename, 'w') as fout:
     write_averages_row(issue_cycle_data, writer)
 
     # Group issues by class of service
-    classes = set(map(lambda a: a['class'].value, issue_cycle_data))
+    classes = set(map(lambda a: a['class'], issue_cycle_data))
     issues_by_cos = {}
     for cos in classes:
-        issues_by_cos[cos] = list(filter(lambda a: a['class'].value == cos, issue_cycle_data))
+        issues_by_cos[cos] = list(filter(lambda a: a['class'] == cos, issue_cycle_data))
 
     for cos in issues_by_cos:
         write_new_group_header(cos)
@@ -316,3 +328,7 @@ with open(outputFilename, 'w') as fout:
             write_issue_row(issue_stats, writer)
 
 print("Processing complete, output saved to ", outputFilename)
+
+print("\n", "Found the following statues in the processed issues:")
+print(all_statuses)
+print("\n")
