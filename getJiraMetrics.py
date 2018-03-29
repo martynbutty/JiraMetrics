@@ -103,34 +103,52 @@ def get_cycle_time(issue_key):
 
     changelog = jira_issue.changelog
     last_time = None
+    last_time_flagged = None
     time_in_status = {}
 
     for history in changelog.histories:
         for item in history.items:
-            if item.field == 'status':
+            if item.field == 'status' or item.field == 'Flagged':
                 this_time = datetime.datetime.strptime(history.created, '%Y-%m-%dT%H:%M:%S.%f%z')
-                # status_col = getattr(item, 'from')  # 'from' is a reserved word so have to use getattr to get it
-                status_col = item.fromString
 
-                if status_col in status_map:
-                    status_col = status_map[status_col]
+                if item.field == 'status':
+                    status_col = item.fromString
+                    if status_col in status_map:
+                        status_col = status_map[status_col]
 
-                if last_time is None:
-                    last_time = this_time
-                else:
-                    days = calculate_duration(last_time, this_time)
-
-                    if status_col in time_in_status:
-                        time_in_status[status_col] += days
+                    if last_time is None:
+                        last_time = this_time
                     else:
-                        time_in_status[status_col] = days
+                        days = calculate_duration(last_time, this_time)
 
-                    if status_col not in all_statuses:
-                        all_statuses[status_col] = 1
-                    else:
-                        all_statuses[status_col] += 1
+                        if status_col in time_in_status:
+                            time_in_status[status_col] += days
+                        else:
+                            time_in_status[status_col] = days
 
-                    last_time = this_time
+                        if status_col not in all_statuses:
+                            all_statuses[status_col] = 1
+                        else:
+                            all_statuses[status_col] += 1
+
+                        last_time = this_time
+                elif item.field == 'Flagged':
+                    if item.toString == 'Impediment':
+                        if last_time_flagged is not None:
+                            print('** Error reading flagged times - we already have flag added?')
+                            print('DO NOT RELY ON FLAGGED TIMES UNTIL INVESTIGATED')
+                        last_time_flagged = this_time
+                    elif item.fromString == 'Impediment':
+                        if last_time_flagged is None:
+                            print('** Error reading flagged times - no timestamp for flag added?')
+                            print('DO NOT RELY ON FLAGGED TIMES UNTIL INVESTIGATED')
+                        else:
+                            days = calculate_duration(last_time_flagged, this_time)
+
+                            if item.field in time_in_status:
+                                time_in_status[item.field] += days
+                            else:
+                                time_in_status[item.field] = days
 
     total = 0
     in_process = 0
@@ -228,10 +246,20 @@ def write_averages_row(issues, csv_writer):
         return
     mean_in_process = sum(an_issue['In Process'] for an_issue in issues)/n
     mean_inactive = sum(an_issue['Inactive'] for an_issue in issues)/n
+    mean_flagged = sum(an_issue['Flagged'] for an_issue in issues)/n
     mean_total = sum(an_issue['Total'] for an_issue in issues)/n
-    csv_writer.writerow(('Averages', '', '', '', '', '', '', '', '', '', '', '', '', mean_in_process, mean_inactive,
-                         mean_total))
-    csv_writer.writerow(('', '', '', '', '', '', '', '', '', '', '', '', '', '', 'Throughput', n))
+
+    output_cols = list(read_config_key('OutputStatusCols', []))
+    mylist = ['Averages']
+    mylist.extend([''] * (len(output_cols) + 2))
+    if "Flagged" in output_cols:
+        mylist.extend([mean_flagged])
+    mylist.extend([mean_in_process, mean_inactive, mean_total])
+    csv_writer.writerow(mylist)
+
+    mylist = [''] * (len(output_cols) + 5)
+    mylist.extend(['Throughput', n])
+    csv_writer.writerow(mylist)
 
 
 def write_new_group_header(class_of_service=None):

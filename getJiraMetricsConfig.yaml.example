@@ -28,6 +28,7 @@ OutputStatusCols:
     - In Test
     - Ready for release
     - Done
+    - Flagged
 
 StatusTypes:
     # List of all statuses that identify an issue as done/resolved/complete etc. This includes issues you rejected
@@ -69,6 +70,7 @@ StatusTypes:
         - Ready for Code Review
         - Ready for Test
         - Ready for release
+        - Flagged
 
     # If you change your workflow in Jira, even just the case of the names, a new state is created. If you have issues
     # that can be in old states, you can map those to a new state by adding entries below. For example if an issue that
