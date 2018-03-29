@@ -118,34 +118,7 @@ def get_cycle_time(issue_key):
                 if last_time is None:
                     last_time = this_time
                 else:
-                    duration = this_time - last_time
-                    mins_diff = divmod(duration.days * 86400 + duration.seconds, 60)[0]
-
-                    weekend_days = 0
-                    tmp = this_time
-                    while tmp.date() > last_time.date():
-                        if tmp.weekday() >= 5:
-                            weekend_days += 1
-                        tmp = tmp - datetime.timedelta(days=1)
-
-                    non_working_mins = weekend_days * 24 * 60
-
-                    working_mins = mins_diff - non_working_mins
-
-                    # If someone works on a weekend, we can get -ve mins worked. This is an exception, and there's no
-                    # easy way to workout how much of the weekend was worked, so lets try adding back half a day at a
-                    # time until get +ve working_mins, assumption being not all weekend worked all the time (for now)
-                    while working_mins <= 0:
-                        working_mins += 720
-
-                    qtr_days = divmod(working_mins, 360)[0]  # 360 mins = 1/4 of a day
-
-                    # If > 1hr but < 1/4day worked, set to 1/4 day so stats look better
-                    if qtr_days == 0 and working_mins > 59:
-                        qtr_days = 1
-
-                    full_days, qtrs = divmod(qtr_days, 4)
-                    days = full_days + (qtrs * 0.25)
+                    days = calculate_duration(last_time, this_time)
 
                     if status_col in time_in_status:
                         time_in_status[status_col] += days
@@ -187,6 +160,38 @@ def get_cycle_time(issue_key):
 
     return row
 
+
+def calculate_duration(start_time, end_time):
+    duration = end_time - start_time
+    mins_diff = divmod(duration.days * 86400 + duration.seconds, 60)[0]
+
+    weekend_days = 0
+    tmp = end_time
+    while tmp.date() > start_time.date():
+        if tmp.weekday() >= 5:
+            weekend_days += 1
+        tmp = tmp - datetime.timedelta(days=1)
+
+    non_working_mins = weekend_days * 24 * 60
+
+    working_mins = mins_diff - non_working_mins
+
+    # If someone works on a weekend, we can get -ve mins worked. This is an exception, and there's no
+    # easy way to workout how much of the weekend was worked, so lets try adding back half a day at a
+    # time until get +ve working_mins, assumption being not all weekend worked all the time (for now)
+    while working_mins <= 0:
+        working_mins += 720
+
+    qtr_days = divmod(working_mins, 360)[0]  # 360 mins = 1/4 of a day
+
+    # If > 1hr but < 1/4day worked, set to 1/4 day so stats look better
+    if qtr_days == 0 and working_mins > 59:
+        qtr_days = 1
+
+    full_days, qtrs = divmod(qtr_days, 4)
+    days = full_days + (qtrs * 0.25)
+
+    return days
 
 def get_empty_return_dict():
     ret = {
