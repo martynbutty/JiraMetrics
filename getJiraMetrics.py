@@ -240,22 +240,35 @@ def write_issue_row(an_issue, csv_writer):
     csv_writer.writerow(tuple(output_row))
 
 
-def write_averages_row(issues, csv_writer):
+def write_summary_rows(issues, csv_writer):
     n = int(len(issues))
     if n <= 0:
         return
-    mean_in_process = sum(an_issue['In Process'] for an_issue in issues)/n
-    mean_inactive = sum(an_issue['Inactive'] for an_issue in issues)/n
-    mean_flagged = sum(an_issue['Flagged'] for an_issue in issues)/n
-    mean_total = sum(an_issue['Total'] for an_issue in issues)/n
+
+    sum_in_process = sum(an_issue['In Process'] for an_issue in issues)
+    sum_inactive = sum(an_issue['Inactive'] for an_issue in issues)
+    sum_flagged = sum(an_issue['Flagged'] for an_issue in issues)
+    sum_total = sum(an_issue['Total'] for an_issue in issues)
+
+    mean_in_process = sum_in_process / n
+    mean_inactive = sum_inactive / n
+    mean_flagged = sum_flagged / n
+    mean_total = sum_total / n
 
     output_cols = list(read_config_key('OutputStatusCols', []))
-    mylist = ['Averages']
-    mylist.extend([''] * (len(output_cols) + 2))
+    mylist = list([''] * (len(output_cols) + 2))
+    mylist.extend(['Averages'])
     if "Flagged" in output_cols:
         mylist.extend([mean_flagged])
     mylist.extend([mean_in_process, mean_inactive, mean_total])
     csv_writer.writerow(mylist)
+
+    totalsList = list([''] * (len(output_cols) + 2))
+    totalsList.extend(['Totals'])
+    if "Flagged" in output_cols:
+        totalsList.extend([sum_flagged])
+    totalsList.extend([sum_in_process, sum_inactive, sum_total])
+    csv_writer.writerow(totalsList)
 
     mylist = [''] * (len(output_cols) + 5)
     mylist.extend(['Throughput', n])
@@ -336,7 +349,7 @@ with open(outputFilename, 'w') as fout:
     for issue in issue_cycle_data:
         write_issue_row(issue, writer)
 
-    write_averages_row(issue_cycle_data, writer)
+    write_summary_rows(issue_cycle_data, writer)
 
     # Group issues by class of service
     classes = set(map(lambda a: a['class'], issue_cycle_data))
@@ -348,7 +361,7 @@ with open(outputFilename, 'w') as fout:
         write_new_group_header(cos)
         for iss in issues_by_cos[cos]:
             write_issue_row(iss, writer)
-        write_averages_row(issues_by_cos[cos], writer)
+        write_summary_rows(issues_by_cos[cos], writer)
 
     writer.writerow('')
     writer.writerow(['OPEN DEFECTS'])
