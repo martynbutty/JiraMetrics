@@ -6,6 +6,14 @@ Connection:
     # Password for the above username. If you do not set one, you will be prompted for it
     Password:
 
+# MySQL connection to store some data in DB for graphing and analysis. If you don't have a MySQL instance to store
+# your data, just delete this entire MySQL section.
+MySQL:
+    host:
+    db:
+    user:
+    password:
+
 # List of Jira project keys. They will be used in the JQL queries generated to get issues
 Projects:
     - CX

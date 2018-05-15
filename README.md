@@ -6,6 +6,8 @@ This seems to be because behind the screnes, Jira creates new states even for a 
 
 Additionally, it's not easy (or even possible?) to export the data of the control report into a spreadsheet for later analysis or presentation etc.
 
+A summary of the data can now be persisted to a database. This will allow you to perform things like week on week comparisons, graphs etc.
+
 ## Setup
 * Clone the repo
 * (Optional) create and activate a [virtual environment](https://docs.python.org/3/tutorial/venv.html)
@@ -14,6 +16,10 @@ Additionally, it's not easy (or even possible?) to export the data of the contro
   * Alternatively, `pip install` the following
     * `$ pip install pyyaml`
     * `$ pip install jira`
+* If you want to save summary data to a DB;
+  * Create your schema in a suitable instance that this code can connect to
+  * Apply the schema.sql file to create the DB table
+  * Add the MySQL connection details to your getJiraMetricsConfig.yaml (details in the .example file)
 
 ## Configuration
 Copy the example configuration file and edit the setting within to match your requirements

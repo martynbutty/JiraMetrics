@@ -5,6 +5,7 @@ import operator
 import os
 import datetime
 import sys
+import mysql.connector
 from functools import reduce
 
 import yaml
@@ -50,6 +51,19 @@ try:
 except TypeError as e:
     print("** Error, please check getJiraMetricsConfig.yaml has at least one project set in the Projects section")
     sys.exit(2)
+
+
+mysql_host = read_config_key(('MySQL', 'host'))
+mysql_db = read_config_key(('MySQL', 'db'))
+mysql_user = read_config_key(('MySQL', 'user'))
+mysql_password = read_config_key(('MySQL', 'password'))
+try:
+    mysql = mysql.connector.MySQLConnection(user=mysql_user, password=mysql_password, host=mysql_host, database=mysql_db)
+    print("Connected to MySQL: stats will be persisted to DB")
+except mysql.connector.Error as err:
+    print("** DB connection failed, will only generate local csv stats!")
+    print(err)
+    mysql = None
 
 status_map = read_config_key(('StatusTypes', 'StatusMap'), {})
 in_process_states = read_config_key(('StatusTypes', 'InProcess'), [])
@@ -240,7 +254,7 @@ def write_issue_row(an_issue, csv_writer):
     csv_writer.writerow(tuple(output_row))
 
 
-def write_summary_rows(issues, csv_writer):
+def write_summary_rows(issues, csv_writer, cos):
     n = int(len(issues))
     if n <= 0:
         return
@@ -273,6 +287,35 @@ def write_summary_rows(issues, csv_writer):
     mylist = [''] * (len(output_cols) + 5)
     mylist.extend(['Throughput', n])
     csv_writer.writerow(mylist)
+
+    if mysql is not None:
+        try:
+            date_from_date = datetime.datetime.strptime(from_date, "%Y-%m-%d")
+            date_to_date = datetime.datetime.strptime(to_date, "%Y-%m-%d")
+
+            if date_to_date.weekday() != 4:
+                raise ValueError("** End date is not a Friday, not updating stats to DB")
+
+            days = (date_to_date - date_from_date).days
+            if days < 4 or days > 6:
+                print(days)
+                raise ValueError("** Stats period is not for a week so will not update stats to DB")
+
+            cursor = mysql.cursor()
+            sql = ("INSERT INTO cycletime "
+                   "(`date`, `cos`, `cycletime`, `throughput`, `in_progress`, `inactive`, `flagged`, `total`)"
+                   " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+                   "ON DUPLICATE KEY UPDATE "
+                   "cycletime = VALUES(cycletime), throughput = VALUES(throughput), in_progress = VALUES(in_progress), "
+                   "inactive = VALUES(inactive), flagged = VALUES(flagged), `total` = VALUES(`total`)")
+
+            # note on "total" field, as we probably want this for total time spent of unplanned work in process, and are
+            # not interested in time spent inactive, will record in process total to DB
+            sql_data = (to_date, cos, mean_total, n, mean_in_process, mean_inactive, mean_flagged, sum_in_process)
+            cursor.execute(sql, sql_data)
+            mysql.commit()
+        except ValueError as db_exception:
+            print(str(db_exception))
 
 
 def write_new_group_header(class_of_service=None):
@@ -349,7 +392,7 @@ with open(outputFilename, 'w') as fout:
     for issue in issue_cycle_data:
         write_issue_row(issue, writer)
 
-    write_summary_rows(issue_cycle_data, writer)
+    write_summary_rows(issue_cycle_data, writer, 'everything')
 
     # Group issues by class of service
     classes = set(map(lambda a: a['class'], issue_cycle_data))
@@ -361,7 +404,7 @@ with open(outputFilename, 'w') as fout:
         write_new_group_header(cos)
         for iss in issues_by_cos[cos]:
             write_issue_row(iss, writer)
-        write_summary_rows(issues_by_cos[cos], writer)
+        write_summary_rows(issues_by_cos[cos], writer, cos)
 
     writer.writerow('')
     writer.writerow(['OPEN DEFECTS'])
