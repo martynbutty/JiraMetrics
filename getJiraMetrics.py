@@ -414,9 +414,13 @@ with open(outputFilename, 'w') as fout:
     if defects is None:
         writer.writerow(['None'])
     else:
-        for defect in defects:
-            issue_stats = get_cycle_time(defect.key)
-            write_issue_row(issue_stats, writer)
+        defect_keys = list(map(lambda x: x.key, defects))
+        defect_data = list(map(get_cycle_time, defect_keys))
+
+        for defect in defect_data:
+            write_issue_row(defect, writer)
+
+        write_summary_rows(defect_data, writer, 'Defects')
 
 print("Processing complete, output saved to ", outputFilename)
 
