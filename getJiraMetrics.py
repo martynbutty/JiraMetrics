@@ -374,6 +374,7 @@ jql = jql.replace('{{to}}', "'" + to_date + "'")
 print("\nUsing the following JQL to get issues\n", jql)
 print("Getting Jira data and processing metrics...")
 
+repTitle = read_config_key('ReportTitle', 'Team Metrics')
 maxIssuesToGet = read_config_key('MaxIssuesToGet', 50)
 issues_done = jira.search_issues(jql, maxResults=maxIssuesToGet)
 all_statuses = {}
@@ -383,7 +384,7 @@ outputFilename = 'cycleTime_' + date_string + '.csv'
 with open(outputFilename, 'w') as fout:
     writer = csv.writer(fout, delimiter=",", quotechar='"')
 
-    writer.writerow(['Supplier Integrations Metrics'])
+    writer.writerow([repTitle])
     writer.writerow('')
     writer.writerow(('Date From', from_date, 'Date To', to_date))
     write_new_group_header()

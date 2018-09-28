@@ -1,3 +1,6 @@
+# Optional - title of the output report, defaults to 'Team Metrics' should it not be set
+ReportTitle: Jira Team Metrics
+
 Connection:
     # URL to your Jira server
     Domain: https://jira.example.com
