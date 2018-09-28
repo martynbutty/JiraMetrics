@@ -57,8 +57,9 @@ mysql_host = read_config_key(('MySQL', 'host'))
 mysql_db = read_config_key(('MySQL', 'db'))
 mysql_user = read_config_key(('MySQL', 'user'))
 mysql_password = read_config_key(('MySQL', 'password'))
+mysql_port = read_config_key(('MySQL', 'port'), 3306)
 try:
-    mysql = mysql.connector.MySQLConnection(user=mysql_user, password=mysql_password, host=mysql_host, database=mysql_db)
+    mysql = mysql.connector.MySQLConnection(user=mysql_user, password=mysql_password, host=mysql_host, database=mysql_db, port=mysql_port)
     print("Connected to MySQL: stats will be persisted to DB")
 except mysql.connector.Error as err:
     print("** DB connection failed, will only generate local csv stats!")
@@ -90,7 +91,7 @@ def get_open_defects():
     defect_types = ','.join(map(str, read_config_key(('IssueTypes', 'Defects'), ())))
     complete_states = ','.join(map(str, read_config_key(('StatusTypes', 'Closed'), ())))
 
-    defect_jql = defect_jql.replace('{{projects}}', project_codes)
+    defect_jql = defect_jql.replace('{{projects}}', '"' + project_codes + '"')
     defect_jql = defect_jql.replace('{{defects}}', defect_types)
     defect_jql = defect_jql.replace('{{complete}}', complete_states)
 
@@ -365,7 +366,7 @@ resolved_states = ','.join(map(str, read_config_key(('StatusTypes', 'Resolved'),
 complete_states = ','.join(map(str, read_config_key(('StatusTypes', 'Closed'), ())))
 
 jql = read_config_key('IssueJQL')
-jql = jql.replace('{{projects}}', project_codes)
+jql = jql.replace('{{projects}}', '"' + project_codes + '"')
 jql = jql.replace('{{resolved}}', resolved_states)
 jql = jql.replace('{{complete}}', complete_states)
 jql = jql.replace('{{from}}', "'" + from_date + "'")
