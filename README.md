@@ -1,12 +1,27 @@
 # JiraMetrics
-A Python script to get metrics like throughput and cycletime from Jira. Output data is written to a spreadsheet in CSV format.
+A Python script to get metrics like cycletime and throughput from Jira. Output data is written to a spreadsheet in CSV format.
 
-If you've every validated the output from Jira's control report, you may have noticed the cycle time isn't quite as you expect, especially if you've every changed your projects workflw to add/remove or rename states. 
-This seems to be because behind the screnes, Jira creates new states even for a simple case change of an existing state, which can then lead to the old states not being included in the cycle time.
+If you've ever validated the output from Jira's control report, you may have noticed the cycle time isn't quite as you expect, especially if you've changed your projects workflow to add, remove or rename states. 
+This seems to be because behind the scenes, Jira creates new states even for a simple case change of an existing states name, which can then lead to the old states not being included in the cycle time.
 
 Additionally, it's not easy (or even possible?) to export the data of the control report into a spreadsheet for later analysis or presentation etc.
 
-A summary of the data can now be persisted to a database. This will allow you to perform things like week on week comparisons, graphs etc.
+Finally, a summary of the data can also be persisted to a database. This will allow you to perform things like week on week comparisons, graphs etc.
+
+## Dockerised run
+If you are familiar with Docker, you can now run the script using Docker so you don't have to install and configure Python3 etc.
+* Clone the repo
+* Complete the [Configuration](#configuration) section setup below
+* Run the container without any arguments to use a time period from the most recent Monday, until today
+```
+$ docker-compose up
+```
+* If you want to run the script for a specific date range, run as follows (see [Running the Script](#running-the-script) section below for argument details)
+```
+$docker-compose run jira-metrics 2018-09-01 2018-10-10
+```
+* The script will generate an output csv file in the current working directory on your host machine
+
 
 ## Setup
 * Clone the repo

@@ -1,0 +1,10 @@
+version: '2'
+
+services:
+  jira-metrics:
+    build: ./
+    image: jira-metrics
+    volumes:
+      - .:/usr/src/app
+    entrypoint: ["python", "./getJiraMetrics.py"]
+
