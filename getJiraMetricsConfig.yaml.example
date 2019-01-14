@@ -107,5 +107,14 @@ IssueJQL: >
 # A JQL query which will return open defects
 OpenDefectJQL: project IN ({{projects}}) AND status not in ({{complete}}) AND issuetype in ({{defects}})
 
+# A JQL query to provide the data to calculate average defect cycle time etc
+DefectsJQL: >
+  project in ({{projects}}) AND
+  status in ({{complete}}) AND
+  status changed to ({{resolved}})
+  during ({{from}}, {{to}})
+  AND issuetype in ({{defects}})
+  ORDER BY priority DESC, updated DESC
+
 # What is the maximum number of Jira issues to return from a JQL query. Defaults to 50 if not set
 MaxIssuesToGet: 9999

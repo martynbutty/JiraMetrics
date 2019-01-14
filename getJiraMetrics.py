@@ -103,6 +103,30 @@ def get_open_defects():
     return all_defects
 
 
+def get_closed_defects():
+    defect_jql = read_config_key('DefectsJQL')
+    if defect_jql is None:
+        return None
+
+    defect_types = ','.join(map(str, read_config_key(('IssueTypes', 'Defects'), ())))
+    complete_states = ','.join(map(str, read_config_key(('StatusTypes', 'Closed'), ())))
+    resolved_states = ','.join(map(str, read_config_key(('StatusTypes', 'Resolved'), ())))
+
+    defect_jql = defect_jql.replace('{{projects}}', '"' + project_codes + '"')
+    defect_jql = defect_jql.replace('{{defects}}', defect_types)
+    defect_jql = defect_jql.replace('{{complete}}', complete_states)
+    defect_jql = defect_jql.replace('{{resolved}}', resolved_states)
+    defect_jql = defect_jql.replace('{{from}}', "'" + from_date + "'")
+    defect_jql = defect_jql.replace('{{to}}', "'" + to_date + "'")
+
+    maxIssuesToGet = read_config_key('MaxIssuesToGet', 50)
+    all_defects = jira.search_issues(defect_jql, maxResults=maxIssuesToGet)
+    if all_defects.total <= 0:
+        return None
+
+    return all_defects
+
+
 def get_cycle_time(issue_key):
     jira_issue = jira.issue(issue_key, 'self,issuetype,priority,customfield_12401', 'changelog')
     # print(json.dumps(jira_issue.raw))
@@ -413,6 +437,20 @@ with open(outputFilename, 'w') as fout:
     writer.writerow('')
     writer.writerow(['OPEN DEFECTS'])
     defects = get_open_defects()
+    if defects is None:
+        writer.writerow(['None'])
+    else:
+        defect_keys = list(map(lambda x: x.key, defects))
+        defect_data = list(map(get_cycle_time, defect_keys))
+
+        for defect in defect_data:
+            write_issue_row(defect, writer)
+
+        write_summary_rows(defect_data, writer, 'Defects')
+
+    writer.writerow('')
+    writer.writerow(['DEFECTS (closed)'])
+    defects = get_closed_defects()
     if defects is None:
         writer.writerow(['None'])
     else:
