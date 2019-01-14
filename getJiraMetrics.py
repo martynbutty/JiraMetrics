@@ -95,7 +95,7 @@ def get_open_defects():
     defect_jql = defect_jql.replace('{{defects}}', defect_types)
     defect_jql = defect_jql.replace('{{complete}}', complete_states)
 
-    maxIssuesToGet = read_config_key('MaxIssuesToGet', 50)
+    maxIssuesToGet = read_config_key('MaxIssuesToGet', 150)
     all_defects = jira.search_issues(defect_jql, maxResults=maxIssuesToGet)
     if all_defects.total <= 0:
         return None
@@ -119,7 +119,7 @@ def get_closed_defects():
     defect_jql = defect_jql.replace('{{from}}', "'" + from_date + "'")
     defect_jql = defect_jql.replace('{{to}}', "'" + to_date + "'")
 
-    maxIssuesToGet = read_config_key('MaxIssuesToGet', 50)
+    maxIssuesToGet = read_config_key('MaxIssuesToGet', 150)
     all_defects = jira.search_issues(defect_jql, maxResults=maxIssuesToGet)
     if all_defects.total <= 0:
         return None
@@ -400,7 +400,7 @@ print("\nUsing the following JQL to get issues\n", jql)
 print("Getting Jira data and processing metrics...")
 
 repTitle = read_config_key('ReportTitle', 'Team Metrics')
-maxIssuesToGet = read_config_key('MaxIssuesToGet', 50)
+maxIssuesToGet = read_config_key('MaxIssuesToGet', 150)
 issues_done = jira.search_issues(jql, maxResults=maxIssuesToGet)
 all_statuses = {}
 
