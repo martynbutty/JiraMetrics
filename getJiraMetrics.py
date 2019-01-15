@@ -144,7 +144,7 @@ def get_cycle_time(issue_key):
     changelog = jira_issue.changelog
     last_time = None
     last_time_flagged = None
-    time_in_status = {}
+    time_in_status = {"Flagged": 0}
 
     for history in changelog.histories:
         for item in history.items:
