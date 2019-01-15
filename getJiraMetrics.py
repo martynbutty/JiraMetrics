@@ -251,6 +251,7 @@ def calculate_duration(start_time, end_time):
 
     return days
 
+
 def get_empty_return_dict():
     ret = {
         'Issue': '',
@@ -357,6 +358,30 @@ def write_new_group_header(class_of_service=None):
     writer.writerow(headers)
 
 
+def get_issue_keys(issues):
+    return list(map(lambda x: x.key, issues))
+
+
+def get_issue_cycle_data(issue_keys):
+    return list(map(get_cycle_time, issue_keys))
+
+
+def output_issues(issue_cycle_data, writer, type=None):
+    if type is None:
+        type = 'everything'
+
+    for issue in issue_cycle_data:
+        write_issue_row(issue, writer)
+
+    write_summary_rows(issue_cycle_data, writer, type)
+
+
+def output_group_header(name=""):
+    writer.writerow('')
+    writer.writerow([name])
+    write_new_group_header()
+
+
 from_date = None
 to_date = None
 
@@ -414,13 +439,9 @@ with open(outputFilename, 'w') as fout:
     writer.writerow(('Date From', from_date, 'Date To', to_date))
     write_new_group_header()
 
-    issues_done_keys = list(map(lambda x: x.key, issues_done))
-    issue_cycle_data = list(map(get_cycle_time, issues_done_keys))
-
-    for issue in issue_cycle_data:
-        write_issue_row(issue, writer)
-
-    write_summary_rows(issue_cycle_data, writer, 'everything')
+    issues_done_keys = get_issue_keys(issues_done)
+    issue_cycle_data = get_issue_cycle_data(issues_done_keys)
+    output_issues(issue_cycle_data, writer, 'everything')
 
     # Group issues by class of service
     classes = set(map(lambda a: a['class'], issue_cycle_data))
@@ -434,33 +455,23 @@ with open(outputFilename, 'w') as fout:
             write_issue_row(iss, writer)
         write_summary_rows(issues_by_cos[cos], writer, cos)
 
-    writer.writerow('')
-    writer.writerow(['OPEN DEFECTS'])
+    output_group_header('OPEN DEFECTS')
     defects = get_open_defects()
     if defects is None:
         writer.writerow(['None'])
     else:
-        defect_keys = list(map(lambda x: x.key, defects))
-        defect_data = list(map(get_cycle_time, defect_keys))
+        defect_keys = get_issue_keys(defects)
+        defect_data = get_issue_cycle_data(defect_keys)
+        output_issues(defect_data, writer, 'OpenDefects')
 
-        for defect in defect_data:
-            write_issue_row(defect, writer)
-
-        write_summary_rows(defect_data, writer, 'Defects')
-
-    writer.writerow('')
-    writer.writerow(['DEFECTS (closed)'])
+    output_group_header('DEFECTS (closed)')
     defects = get_closed_defects()
     if defects is None:
         writer.writerow(['None'])
     else:
-        defect_keys = list(map(lambda x: x.key, defects))
-        defect_data = list(map(get_cycle_time, defect_keys))
-
-        for defect in defect_data:
-            write_issue_row(defect, writer)
-
-        write_summary_rows(defect_data, writer, 'Defects')
+        defect_keys = get_issue_keys(defects)
+        defect_data = get_issue_cycle_data(defect_keys)
+        output_issues(defect_data, writer, 'ClosedDefects')
 
 print("Processing complete, output saved to ", outputFilename)
 
