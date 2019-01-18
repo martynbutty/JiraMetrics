@@ -136,9 +136,12 @@ def get_cycle_time(issue_key):
     issue_type = jira_issue.fields.issuetype
     issue_priority = jira_issue.fields.priority
 
-    if jira_issue.fields.customfield_12401 is not None:
-        class_of_service = jira_issue.fields.customfield_12401.value
-    else:
+    try:
+        if jira_issue.fields.customfield_12401 is not None:
+            class_of_service = jira_issue.fields.customfield_12401.value
+        else:
+            class_of_service = "NOT SET"
+    except AttributeError:
         class_of_service = "NOT SET"
 
     changelog = jira_issue.changelog
