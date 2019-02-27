@@ -128,7 +128,7 @@ def get_closed_defects():
 
 
 def get_cycle_time(issue_key):
-    jira_issue = jira.issue(issue_key, 'self,issuetype,priority,customfield_12401', 'changelog')
+    jira_issue = jira.issue(issue_key, 'self,issuetype,priority,customfield_12401,created', 'changelog')
     # print(json.dumps(jira_issue.raw))
     # for field_name in jira_issue.raw['fields']:
     #     print("Field:", field_name, "Value:", jira_issue.raw['fields'][field_name])
@@ -148,6 +148,9 @@ def get_cycle_time(issue_key):
     last_time = None
     last_time_flagged = None
     time_in_status = {"Flagged": 0}
+
+    if jira_issue.fields.created is not None:
+        last_time = datetime.datetime.strptime(jira_issue.fields.created, '%Y-%m-%dT%H:%M:%S.%f%z')
 
     for history in changelog.histories:
         for item in history.items:
