@@ -324,21 +324,21 @@ def write_summary_rows(issues, csv_writer, cos):
     mean_total = sum_total / n
 
     output_cols = list(read_config_key('OutputStatusCols', []))
-    mylist = list([''] * (len(output_cols) + 2))
+    mylist = list([''] * (len(output_cols) + 3))
     mylist.extend(['Averages'])
     if "Flagged" in output_cols:
         mylist.extend([mean_flagged])
     mylist.extend([mean_in_process, mean_inactive, mean_total])
     csv_writer.writerow(mylist)
 
-    totalsList = list([''] * (len(output_cols) + 2))
+    totalsList = list([''] * (len(output_cols) + 3))
     totalsList.extend(['Totals'])
     if "Flagged" in output_cols:
         totalsList.extend([sum_flagged])
     totalsList.extend([sum_in_process, sum_inactive, sum_total])
     csv_writer.writerow(totalsList)
 
-    mylist = [''] * (len(output_cols) + 5)
+    mylist = [''] * (len(output_cols) + 6)
     mylist.extend(['Throughput', n])
     csv_writer.writerow(mylist)
 
