@@ -127,15 +127,7 @@ def get_closed_defects():
     return all_defects
 
 
-def get_cycle_time(issue_key):
-    jira_issue = jira.issue(issue_key, 'self,issuetype,priority,customfield_12401,created', 'changelog')
-    # print(json.dumps(jira_issue.raw))
-    # for field_name in jira_issue.raw['fields']:
-    #     print("Field:", field_name, "Value:", jira_issue.raw['fields'][field_name])
-
-    issue_type = jira_issue.fields.issuetype
-    issue_priority = jira_issue.fields.priority
-
+def get_class_of_service(jira_issue):
     try:
         if jira_issue.fields.customfield_12401 is not None:
             class_of_service = jira_issue.fields.customfield_12401.value
@@ -143,6 +135,33 @@ def get_cycle_time(issue_key):
             class_of_service = "NOT SET"
     except AttributeError:
         class_of_service = "NOT SET"
+
+    return class_of_service
+
+
+def get_work_type(jira_issue):
+    try:
+        if jira_issue.fields.customfield_15200 is not None:
+            work_type = jira_issue.fields.customfield_15200.value
+        else:
+            work_type = "NOT SET"
+    except AttributeError:
+        work_type = "NOT SET"
+
+    return work_type
+
+
+def get_cycle_time(issue_key):
+    jira_issue = jira.issue(issue_key, 'self,issuetype,priority,customfield_12401,customfield_15200,created', 'changelog')
+    # print(json.dumps(jira_issue.raw))
+    for field_name in jira_issue.raw['fields']:
+        print("Field:", field_name, "Value:", jira_issue.raw['fields'][field_name])
+
+    issue_type = jira_issue.fields.issuetype
+    issue_priority = jira_issue.fields.priority
+
+    class_of_service = get_class_of_service(jira_issue)
+    work_type = get_work_type(jira_issue)
 
     changelog = jira_issue.changelog
     last_time = None
@@ -205,6 +224,7 @@ def get_cycle_time(issue_key):
     row['type'] = issue_type
     row['priority'] = issue_priority
     row['class'] = class_of_service
+    row['work_type'] = work_type
 
     for status in time_in_status:
         row[status] = time_in_status[status]
@@ -264,7 +284,8 @@ def get_empty_return_dict():
         'In Process': 0,
         'Inactive': 0,
         'Total': 0,
-        'class': 'NOT SET'
+        'class': 'NOT SET',
+        'work_type': 'NOT SET'
     }
 
     output_states = read_config_key('OutputStatusCols', [])
@@ -278,7 +299,7 @@ def write_issue_row(an_issue, csv_writer):
     link = '=HYPERLINK("' + config['Connection']['Domain'] + "/browse/" + an_issue['Issue'] + '","' + an_issue['Issue']\
            + '")'
 
-    keys = ['type', 'priority', 'class']
+    keys = ['type', 'priority', 'class', 'work_type']
     keys.extend(read_config_key('OutputStatusCols', []))
     keys.extend(['In Process', 'Inactive', 'Total'])
 
@@ -357,7 +378,7 @@ def write_new_group_header(class_of_service=None):
     if class_of_service is not None:
         writer.writerow(['CLASS OF SERVICE', cos])
 
-    static_headers = ('Issue', 'Type', 'Priority', 'Class of Service')
+    static_headers = ('Issue', 'Type', 'Priority', 'Class of Service', 'Work Type')
     static_headers_postfix = ('In Process', 'Inactive', 'Total')
     status_cols = tuple(read_config_key('OutputStatusCols', []))
     headers = static_headers + (status_cols) + static_headers_postfix
