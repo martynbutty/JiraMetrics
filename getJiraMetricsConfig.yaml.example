@@ -116,5 +116,15 @@ DefectsJQL: >
   AND issuetype in ({{defects}})
   ORDER BY priority DESC, updated DESC
 
+# Template JQL to get release tickets. All tickets linked to these that begin with one of the "Projects" config
+# values will count as a teams release. Change the project key "REL" to whatever project you use for release issues.
+# Note, this all assumes that you track all releases using a single separate project for now
+ReleasesJQL: >
+  project in (REL) AND
+  status in (RELEASED) AND
+  status changed to (RELEASED)
+  during ({{from}}, {{to}})
+  ORDER BY priority DESC, updated DESC
+
 # What is the maximum number of Jira issues to return from a JQL query. Defaults to 50 if not set
 MaxIssuesToGet: 9999

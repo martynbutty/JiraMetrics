@@ -91,7 +91,7 @@ def get_open_defects():
     defect_types = ','.join(map(str, read_config_key(('IssueTypes', 'Defects'), ())))
     complete_states = ','.join(map(str, read_config_key(('StatusTypes', 'Closed'), ())))
 
-    defect_jql = defect_jql.replace('{{projects}}', '"' + project_codes + '"')
+    defect_jql = defect_jql.replace('{{projects}}', project_codes)
     defect_jql = defect_jql.replace('{{defects}}', defect_types)
     defect_jql = defect_jql.replace('{{complete}}', complete_states)
 
@@ -112,7 +112,7 @@ def get_closed_defects():
     complete_states = ','.join(map(str, read_config_key(('StatusTypes', 'Closed'), ())))
     resolved_states = ','.join(map(str, read_config_key(('StatusTypes', 'Resolved'), ())))
 
-    defect_jql = defect_jql.replace('{{projects}}', '"' + project_codes + '"')
+    defect_jql = defect_jql.replace('{{projects}}', project_codes)
     defect_jql = defect_jql.replace('{{defects}}', defect_types)
     defect_jql = defect_jql.replace('{{complete}}', complete_states)
     defect_jql = defect_jql.replace('{{resolved}}', resolved_states)
@@ -154,8 +154,8 @@ def get_work_type(jira_issue):
 def get_cycle_time(issue_key):
     jira_issue = jira.issue(issue_key, 'self,issuetype,priority,customfield_12401,customfield_15200,created', 'changelog')
     # print(json.dumps(jira_issue.raw))
-    for field_name in jira_issue.raw['fields']:
-        print("Field:", field_name, "Value:", jira_issue.raw['fields'][field_name])
+    #for field_name in jira_issue.raw['fields']:
+        #print("Field:", field_name, "Value:", jira_issue.raw['fields'][field_name])
 
     issue_type = jira_issue.fields.issuetype
     issue_priority = jira_issue.fields.priority
@@ -442,7 +442,7 @@ resolved_states = ','.join(map(str, read_config_key(('StatusTypes', 'Resolved'),
 complete_states = ','.join(map(str, read_config_key(('StatusTypes', 'Closed'), ())))
 
 jql = read_config_key('IssueJQL')
-jql = jql.replace('{{projects}}', '"' + project_codes + '"')
+jql = jql.replace('{{projects}}', project_codes)
 jql = jql.replace('{{resolved}}', resolved_states)
 jql = jql.replace('{{complete}}', complete_states)
 jql = jql.replace('{{from}}', "'" + from_date + "'")
@@ -505,3 +505,39 @@ print("Processing complete, output saved to ", outputFilename)
 print("\n", "Found the following statues in the processed issues:")
 print(all_statuses)
 print("\n")
+
+
+jql = read_config_key('ReleasesJQL')
+jql = jql.replace('{{from}}', "'" + from_date + "'")
+jql = jql.replace('{{to}}', "'" + to_date + "'")
+
+print("\nUsing the following JQL to get release issues\n", jql)
+print("Searching for releases...")
+release_issues = jira.search_issues(jql, maxResults=maxIssuesToGet)
+releases = 0
+found_in_rel = False
+project_codes_tuple = tuple(read_config_key('Projects', ()))
+
+print("Scanning found releases for your team/projects tickets as linked issues...")
+for issueId in release_issues:
+    rel = jira.issue(issueId)
+    if (rel.fields.issuelinks):
+        for link in rel.fields.issuelinks:
+            if hasattr(link, "outwardIssue"):
+                linkedIssue = link.outwardIssue
+            elif hasattr(link, "inwardIssue"):
+                linkedIssue = link.inwardIssue
+            else:
+                linkedIssue = None
+
+            if linkedIssue is not None:
+                 try:
+                     linked_issue_key = jira.issue(linkedIssue).key
+                     if linked_issue_key.startswith(project_codes_tuple):
+                         releases += 1
+                         found_in_rel = True
+                         break
+                 except (JIRAError, TypeError, AttributeError):
+                     print(json.dumps(rel.raw))
+
+print ("Releases for team: " + str(releases))
