@@ -5,7 +5,6 @@ import operator
 import os
 import datetime
 import sys
-import mysql.connector
 from functools import reduce
 
 import yaml
@@ -53,19 +52,6 @@ except TypeError as e:
     sys.exit(2)
 
 
-mysql_host = read_config_key(('MySQL', 'host'))
-mysql_db = read_config_key(('MySQL', 'db'))
-mysql_user = read_config_key(('MySQL', 'user'))
-mysql_password = read_config_key(('MySQL', 'password'))
-mysql_port = read_config_key(('MySQL', 'port'), 3306)
-try:
-    mysql = mysql.connector.MySQLConnection(user=mysql_user, password=mysql_password, host=mysql_host, database=mysql_db, port=mysql_port)
-    print("Connected to MySQL: stats will be persisted to DB")
-except mysql.connector.Error as err:
-    print("** DB connection failed, will only generate local csv stats!")
-    print(err)
-    mysql = None
-
 status_map = read_config_key(('StatusTypes', 'StatusMap'), {})
 in_process_states = read_config_key(('StatusTypes', 'InProcess'), [])
 in_progress_states = read_config_key(('StatusTypes', 'InProgress'), [])
@@ -89,7 +75,9 @@ def get_open_defects():
         return None
 
     defect_types = ','.join(map(str, read_config_key(('IssueTypes', 'Defects'), ())))
-    complete_states = ','.join(map(str, read_config_key(('StatusTypes', 'Closed'), ())))
+
+    complete_states = quote_list(read_config_key(('StatusTypes', 'Closed')))
+    complete_states = ','.join(map(str, complete_states))
 
     defect_jql = defect_jql.replace('{{projects}}', project_codes)
     defect_jql = defect_jql.replace('{{defects}}', defect_types)
@@ -109,8 +97,12 @@ def get_closed_defects():
         return None
 
     defect_types = ','.join(map(str, read_config_key(('IssueTypes', 'Defects'), ())))
-    complete_states = ','.join(map(str, read_config_key(('StatusTypes', 'Closed'), ())))
-    resolved_states = ','.join(map(str, read_config_key(('StatusTypes', 'Resolved'), ())))
+
+    resolved_states_from_config = quote_list(read_config_key(('StatusTypes', 'Resolved')))
+    resolved_states = ','.join(map(str, resolved_states_from_config))
+
+    complete_states = quote_list(read_config_key(('StatusTypes', 'Closed')))
+    complete_states = ','.join(map(str, complete_states))
 
     defect_jql = defect_jql.replace('{{projects}}', project_codes)
     defect_jql = defect_jql.replace('{{defects}}', defect_types)
@@ -342,36 +334,6 @@ def write_summary_rows(issues, csv_writer, cos):
     mylist.extend(['Throughput', n])
     csv_writer.writerow(mylist)
 
-    if mysql is not None:
-        try:
-            date_from_date = datetime.datetime.strptime(from_date, "%Y-%m-%d")
-            date_to_date = datetime.datetime.strptime(to_date, "%Y-%m-%d")
-
-            if date_to_date.weekday() != 4:
-                raise ValueError("** End date is not a Friday, not updating stats to DB")
-
-            days = (date_to_date - date_from_date).days
-            if days < 4 or days > 6:
-                print(days)
-                raise ValueError("** Stats period is not for a week so will not update stats to DB")
-
-            cursor = mysql.cursor()
-            sql = ("INSERT INTO cycletime "
-                   "(`date`, `cos`, `cycletime`, `throughput`, `in_progress`, `inactive`, `flagged`, `total`)"
-                   " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-                   "ON DUPLICATE KEY UPDATE "
-                   "cycletime = VALUES(cycletime), throughput = VALUES(throughput), in_progress = VALUES(in_progress), "
-                   "inactive = VALUES(inactive), flagged = VALUES(flagged), `total` = VALUES(`total`)")
-
-            # note on "total" field, as we probably want this for total time spent of unplanned work in process, and are
-            # not interested in time spent inactive, will record in process total to DB
-            sql_data = (to_date, cos, mean_total, n, mean_in_process, mean_inactive, mean_flagged, sum_in_process)
-            cursor.execute(sql, sql_data)
-            mysql.commit()
-        except ValueError as db_exception:
-            print(str(db_exception))
-
-
 def write_new_group_header(class_of_service=None):
     writer.writerow('')
 
@@ -409,6 +371,14 @@ def output_group_header(name=""):
     write_new_group_header()
 
 
+def quote_list(things):
+    new_return = []
+    for thing in things:
+        new_item = '"' + thing + '"'
+        new_return.append(new_item)
+
+    return new_return
+
 from_date = None
 to_date = None
 
@@ -438,8 +408,11 @@ if from_date is None:
 if to_date is None:
     to_date = datetime.date.today().strftime("%Y-%m-%d")
 
-resolved_states = ','.join(map(str, read_config_key(('StatusTypes', 'Resolved'), ())))
-complete_states = ','.join(map(str, read_config_key(('StatusTypes', 'Closed'), ())))
+resolved_states_from_config = quote_list(read_config_key(('StatusTypes', 'Resolved')))
+resolved_states = ','.join(map(str, resolved_states_from_config))
+
+complete_states = quote_list(read_config_key(('StatusTypes', 'Closed')))
+complete_states = ','.join(map(str, complete_states))
 
 jql = read_config_key('IssueJQL')
 jql = jql.replace('{{projects}}', project_codes)
@@ -536,6 +509,7 @@ for issueId in release_issues:
                      if linked_issue_key.startswith(project_codes_tuple):
                          releases += 1
                          found_in_rel = True
+                         print(rel)
                          break
                  except (JIRAError, TypeError, AttributeError):
                      print(json.dumps(rel.raw))
