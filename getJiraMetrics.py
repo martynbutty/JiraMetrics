@@ -1,37 +1,25 @@
 import csv
 import getpass
 import json
-import operator
 import os
 import datetime
 import sys
-from functools import reduce
 
-import yaml
+from configFileUtils import Config
 
 # https://jira.readthedocs.io/en/master/
 from jira import JIRA, JIRAError
 
-
-def read_config_key(key, default=None):
-    try:
-        if type(key) is list or type(key) is tuple:
-            return reduce(operator.getitem, key, config)
-        else:
-            return config[key]
-    except KeyError:
-        return default
-
-
-yaml_stream = open('getJiraMetricsConfig.yaml', 'r')
-config = yaml.load(yaml_stream)
+config_yaml = open('getJiraMetricsConfig.yaml', 'r')
+config = Config(config_yaml)
 
 os.environ['HTTPS_PROXY'] = ''
 os.environ['https_proxy'] = ''
 
 # Pass in a tuple of coma sep strings of key names to read_config_key to get nested values
-username = read_config_key(('Connection', 'Username'))
-password = read_config_key(('Connection', 'Password'))
+username = config.read_config_key(('Connection', 'Username'))
+password = config.read_config_key(('Connection', 'Password'))
+server = config.read_config_key(('Connection', 'Domain'))
 
 while not username or username is None:
     username = input("Please enter the Jira username: ")
@@ -41,21 +29,21 @@ while not password or password is None:
 
 auth = (username, password)
 options = {
-    'server': config['Connection']['Domain'],
+    'server': server,
     'basic-auth': auth
 }
 
 try:
-    project_codes = ','.join(map(str, read_config_key('Projects', ())))
+    project_codes = ','.join(map(str, config.read_config_key('Projects', ())))
 except TypeError as e:
     print("** Error, please check getJiraMetricsConfig.yaml has at least one project set in the Projects section")
     sys.exit(2)
 
 
-status_map = read_config_key(('StatusTypes', 'StatusMap'), {})
-in_process_states = read_config_key(('StatusTypes', 'InProcess'), [])
-in_progress_states = read_config_key(('StatusTypes', 'InProgress'), [])
-inactive_states = read_config_key(('StatusTypes', 'Inactive'), [])
+status_map = config.read_config_key(('StatusTypes', 'StatusMap'), {})
+in_process_states = config.read_config_key(('StatusTypes', 'InProcess'), [])
+in_progress_states = config.read_config_key(('StatusTypes', 'InProgress'), [])
+inactive_states = config.read_config_key(('StatusTypes', 'Inactive'), [])
 
 try:
     jira = JIRA(options, basic_auth=auth, max_retries=0, validate=True)
@@ -70,20 +58,18 @@ except JIRAError as e:
 
 
 def get_open_defects():
-    defect_jql = read_config_key('OpenDefectJQL')
+    defect_jql = config.read_config_key('OpenDefectJQL')
     if defect_jql is None:
         return None
 
-    defect_types = ','.join(map(str, read_config_key(('IssueTypes', 'Defects'), ())))
-
-    complete_states = quote_list(read_config_key(('StatusTypes', 'Closed')))
-    complete_states = ','.join(map(str, complete_states))
+    defect_types = config.get_quoted_cs_string(('IssueTypes', 'Defects'))
+    complete_states = config.get_quoted_cs_string(('StatusTypes', 'Closed'))
 
     defect_jql = defect_jql.replace('{{projects}}', project_codes)
     defect_jql = defect_jql.replace('{{defects}}', defect_types)
     defect_jql = defect_jql.replace('{{complete}}', complete_states)
 
-    maxIssuesToGet = read_config_key('MaxIssuesToGet', 150)
+    maxIssuesToGet = config.read_config_key('MaxIssuesToGet', 150)
     all_defects = jira.search_issues(defect_jql, maxResults=maxIssuesToGet)
     if all_defects.total <= 0:
         return None
@@ -92,17 +78,13 @@ def get_open_defects():
 
 
 def get_closed_defects():
-    defect_jql = read_config_key('DefectsJQL')
+    defect_jql = config.read_config_key('DefectsJQL')
     if defect_jql is None:
         return None
 
-    defect_types = ','.join(map(str, read_config_key(('IssueTypes', 'Defects'), ())))
-
-    resolved_states_from_config = quote_list(read_config_key(('StatusTypes', 'Resolved')))
-    resolved_states = ','.join(map(str, resolved_states_from_config))
-
-    complete_states = quote_list(read_config_key(('StatusTypes', 'Closed')))
-    complete_states = ','.join(map(str, complete_states))
+    defect_types = config.get_quoted_cs_string(('IssueTypes', 'Defects'))
+    resolved_states = config.get_quoted_cs_string(('StatusTypes', 'Resolved'))
+    complete_states = config.get_quoted_cs_string(('StatusTypes', 'Closed'))
 
     defect_jql = defect_jql.replace('{{projects}}', project_codes)
     defect_jql = defect_jql.replace('{{defects}}', defect_types)
@@ -111,7 +93,7 @@ def get_closed_defects():
     defect_jql = defect_jql.replace('{{from}}', "'" + from_date + "'")
     defect_jql = defect_jql.replace('{{to}}', "'" + to_date + "'")
 
-    maxIssuesToGet = read_config_key('MaxIssuesToGet', 150)
+    maxIssuesToGet = config.read_config_key('MaxIssuesToGet', 150)
     all_defects = jira.search_issues(defect_jql, maxResults=maxIssuesToGet)
     if all_defects.total <= 0:
         return None
@@ -280,7 +262,7 @@ def get_empty_return_dict():
         'work_type': 'NOT SET'
     }
 
-    output_states = read_config_key('OutputStatusCols', [])
+    output_states = config.read_config_key('OutputStatusCols', [])
     for key in output_states:
         ret[key] = 0
 
@@ -288,11 +270,11 @@ def get_empty_return_dict():
 
 
 def write_issue_row(an_issue, csv_writer):
-    link = '=HYPERLINK("' + config['Connection']['Domain'] + "/browse/" + an_issue['Issue'] + '","' + an_issue['Issue']\
+    link = '=HYPERLINK("' + server + "/browse/" + an_issue['Issue'] + '","' + an_issue['Issue']\
            + '")'
 
     keys = ['type', 'priority', 'class', 'work_type']
-    keys.extend(read_config_key('OutputStatusCols', []))
+    keys.extend(config.read_config_key('OutputStatusCols', []))
     keys.extend(['In Process', 'Inactive', 'Total'])
 
     output_row = [link]
@@ -315,7 +297,7 @@ def write_summary_rows(issues, csv_writer, cos):
     mean_flagged = sum_flagged / n
     mean_total = sum_total / n
 
-    output_cols = list(read_config_key('OutputStatusCols', []))
+    output_cols = list(config.read_config_key('OutputStatusCols', []))
     mylist = list([''] * (len(output_cols) + 3))
     mylist.extend(['Averages'])
     if "Flagged" in output_cols:
@@ -334,6 +316,7 @@ def write_summary_rows(issues, csv_writer, cos):
     mylist.extend(['Throughput', n])
     csv_writer.writerow(mylist)
 
+
 def write_new_group_header(class_of_service=None):
     writer.writerow('')
 
@@ -342,7 +325,7 @@ def write_new_group_header(class_of_service=None):
 
     static_headers = ('Issue', 'Type', 'Priority', 'Class of Service', 'Work Type')
     static_headers_postfix = ('In Process', 'Inactive', 'Total')
-    status_cols = tuple(read_config_key('OutputStatusCols', []))
+    status_cols = tuple(config.read_config_key('OutputStatusCols', []))
     headers = static_headers + (status_cols) + static_headers_postfix
     writer.writerow(headers)
 
@@ -370,14 +353,6 @@ def output_group_header(name=""):
     writer.writerow([name])
     write_new_group_header()
 
-
-def quote_list(things):
-    new_return = []
-    for thing in things:
-        new_item = '"' + thing + '"'
-        new_return.append(new_item)
-
-    return new_return
 
 from_date = None
 to_date = None
@@ -408,13 +383,10 @@ if from_date is None:
 if to_date is None:
     to_date = datetime.date.today().strftime("%Y-%m-%d")
 
-resolved_states_from_config = quote_list(read_config_key(('StatusTypes', 'Resolved')))
-resolved_states = ','.join(map(str, resolved_states_from_config))
+resolved_states = config.get_quoted_cs_string(('StatusTypes', 'Resolved'))
+complete_states = config.get_quoted_cs_string(('StatusTypes', 'Closed'))
 
-complete_states = quote_list(read_config_key(('StatusTypes', 'Closed')))
-complete_states = ','.join(map(str, complete_states))
-
-jql = read_config_key('IssueJQL')
+jql = config.read_config_key('IssueJQL')
 jql = jql.replace('{{projects}}', project_codes)
 jql = jql.replace('{{resolved}}', resolved_states)
 jql = jql.replace('{{complete}}', complete_states)
@@ -424,8 +396,8 @@ jql = jql.replace('{{to}}', "'" + to_date + "'")
 print("\nUsing the following JQL to get issues\n", jql)
 print("Getting Jira data and processing metrics...")
 
-repTitle = read_config_key('ReportTitle', 'Team Metrics')
-maxIssuesToGet = read_config_key('MaxIssuesToGet', 150)
+repTitle = config.read_config_key('ReportTitle', 'Team Metrics')
+maxIssuesToGet = config.read_config_key('MaxIssuesToGet', 150)
 issues_done = jira.search_issues(jql, maxResults=maxIssuesToGet)
 all_statuses = {}
 
@@ -479,8 +451,7 @@ print("\n", "Found the following statues in the processed issues:")
 print(all_statuses)
 print("\n")
 
-
-jql = read_config_key('ReleasesJQL')
+jql = config.read_config_key('ReleasesJQL')
 jql = jql.replace('{{from}}', "'" + from_date + "'")
 jql = jql.replace('{{to}}', "'" + to_date + "'")
 
@@ -489,7 +460,7 @@ print("Searching for releases...")
 release_issues = jira.search_issues(jql, maxResults=maxIssuesToGet)
 releases = 0
 found_in_rel = False
-project_codes_tuple = tuple(read_config_key('Projects', ()))
+project_codes_tuple = tuple(config.read_config_key('Projects', ()))
 
 print("Scanning found releases for your team/projects tickets as linked issues...")
 for issueId in release_issues:
